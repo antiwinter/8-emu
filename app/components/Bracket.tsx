@@ -3,7 +3,7 @@ import { useGame } from '../context/GameContext';
 import { KnockoutSeries, Player } from '../types/game';
 
 export const Bracket: React.FC = () => {
-  const { state, startKnockoutBattle, simulateNextKnockoutStep } = useGame();
+  const { state, startKnockoutBattle, simulateNextKnockoutStep, setView } = useGame();
   const [isSimulating, setIsSimulating] = useState(false);
 
   // Determine user status
@@ -43,6 +43,9 @@ export const Bracket: React.FC = () => {
 
   // Waiting Mode: User finished, but phase isn't over (others playing)
   const isWaitingForOpponent = isUserSeriesFinished && isOtherSeriesActive;
+  
+  // Tournament Finished
+  const isTournamentFinished = !!state.final?.winnerId && !!state.thirdPlace?.winnerId;
 
   const handleSimulate = () => {
     setIsSimulating(true);
@@ -50,6 +53,10 @@ export const Bracket: React.FC = () => {
       simulateNextKnockoutStep();
       setIsSimulating(false);
     }, 800);
+  };
+  
+  const handleLeaderboard = () => {
+      setView('leaderboard');
   };
 
   const handleUserBattle = (seriesId: string) => {
@@ -99,20 +106,20 @@ export const Bracket: React.FC = () => {
 
       <div className="mt-12">
         {/* Action Button Area */}
-        {isSpectator || isWaitingForOpponent ? (
+        {isSpectator || isWaitingForOpponent || isTournamentFinished ? (
              <button
-                onClick={handleSimulate}
-                disabled={isSimulating || (!isOtherSeriesActive && !isWaitingForOpponent && (!!final?.winnerId && !!thirdPlace?.winnerId))}
+                onClick={isTournamentFinished ? handleLeaderboard : handleSimulate}
+                disabled={isSimulating || (!isOtherSeriesActive && !isWaitingForOpponent && !isTournamentFinished)}
                 className={`
                     px-10 py-4 font-bold text-xl rounded-full shadow-lg 
                     transform transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
                     border-4 
                     ${isWaitingForOpponent 
                         ? 'bg-blue-700 text-white border-blue-500 hover:bg-blue-600' 
-                        : 'bg-gray-700 text-white border-gray-600 hover:bg-gray-600'}
+                        : (isTournamentFinished ? 'bg-yellow-600 text-white border-yellow-500 hover:bg-yellow-500' : 'bg-gray-700 text-white border-gray-600 hover:bg-gray-600')}
                 `}
              >
-                {!!final?.winnerId && !isWaitingForOpponent ? 'Tournament Finished' : (isSimulating ? 'Simulating...' : (isWaitingForOpponent ? 'Watch Other Matches' : 'Watch Next Round'))}
+                {isTournamentFinished ? 'Leaderboard' : (isSimulating ? 'Simulating...' : (isWaitingForOpponent ? 'Watch Other Matches' : 'Watch Next Round'))}
              </button>
         ) : (
              userSeriesId && (

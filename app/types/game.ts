@@ -1,5 +1,7 @@
 export type Phase = 'RoundRobin' | 'SemiFinals' | 'Finals' | 'ThirdPlace';
 
+export type UIView = 'match' | 'leaderboard' | 'bracket';
+
 export interface Player {
   id: string;
   name: string;
@@ -46,8 +48,10 @@ export interface GameState {
   
   // Active Match (for Battle View)
   currentActiveMatch: Match | null; // If set, show MatchArea
+  lastMatchResult: Match | null; // The match just completed
   
   // UI State
+  uiView: UIView;
   showCelebration: boolean;
   celebrationMessage: string;
 }

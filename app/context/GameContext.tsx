@@ -1,16 +1,18 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { GameState, Player, Match, Phase, KnockoutSeries } from '../types/game';
+import { GameState, Player, Match, Phase, KnockoutSeries, UIView } from '../types/game';
 import { PLAYERS } from '../constants/players';
 import { generateRoundRobinSchedule, calculateStandings, simulateMatchWinner } from '../utils/gameLogic';
 
 interface GameContextType {
   state: GameState;
   selectCharacter: (playerId: string) => void;
-  playNextMatch: () => void; // Used for "Start Battle" in MatchArea
+  playNextMatch: () => void; // Called when "Start Battle" is clicked in MatchArea
   startKnockoutBattle: (seriesId: string) => void; // Used to enter Battle Mode from Bracket
   simulateNextKnockoutStep: () => void; // Used for Spectator Mode
+  setView: (view: UIView) => void;
+  clearLastMatch: () => void;
   resetGame: () => void;
   closeCelebration: () => void;
 }
@@ -25,6 +27,8 @@ const initialState: GameState = {
   final: null,
   thirdPlace: null,
   currentActiveMatch: null,
+  lastMatchResult: null,
+  uiView: 'match',
   showCelebration: false,
   celebrationMessage: '',
 };
@@ -70,7 +74,9 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         roundRobinMatches: matches,
         currentMatchIndex: index,
         players: updatedPlayers,
-        currentActiveMatch: activeMatch
+        currentActiveMatch: activeMatch,
+        uiView: 'match',
+        lastMatchResult: null
       };
     });
   };
@@ -85,6 +91,14 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       ...initialState,
       roundRobinMatches: matches,
     });
+  };
+
+  const setView = (view: UIView) => {
+    setState(prev => ({ ...prev, uiView: view }));
+  };
+
+  const clearLastMatch = () => {
+    setState(prev => ({ ...prev, lastMatchResult: null }));
   };
 
   // Called when "Start Battle" is clicked in MatchArea
@@ -140,7 +154,8 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
          players: updatedPlayers,
          roundRobinMatches: updatedMatches,
          currentMatchIndex: index,
-         currentActiveMatch: updatedMatches[index]
+         currentActiveMatch: updatedMatches[index],
+         lastMatchResult: completedMatch // Store result for Post-Fight View
        }));
     }
   };
@@ -179,6 +194,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
       semiFinals: [s1, s2],
       showCelebration: userQualified,
       celebrationMessage: userQualified ? 'Congratulations! You qualified for the Semi-Finals!' : 'Round Robin Finished',
+      uiView: userQualified ? 'bracket' : 'leaderboard', // Go to bracket if qualified, else leaderboard? Or wait for user input? 
+      // User input is safer, but transition usually forces a view change.
+      // Let's stick to bracket or leaderboard.
+      // If qualified, user enters knockout flow -> Bracket.
+      // If not, leaderboard or bracket (spectator).
     }));
   };
 
@@ -199,7 +219,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isCompleted: false
     };
 
-    setState(prev => ({ ...prev, currentActiveMatch: match }));
+    setState(prev => ({ ...prev, currentActiveMatch: match, uiView: 'match', lastMatchResult: null }));
   };
 
   const resolveKnockoutBattle = () => {
@@ -215,44 +235,33 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const simulatedMatches = [completedMatch];
 
     // 2. Simulate 1 game for OTHER active series in same phase
+    // ... (Same logic as before) ...
+    let otherSeries: KnockoutSeries | undefined;
     if (state.currentPhase === 'SemiFinals') {
-        const otherSeries = state.semiFinals.find(s => !currentActiveMatch.id.startsWith(s.id));
-        if (otherSeries && !otherSeries.winnerId) {
-             const op1 = players.find(p => p.id === otherSeries.player1Id)!;
-             const op2 = players.find(p => p.id === otherSeries.player2Id)!;
-             const owId = simulateMatchWinner(op1, op2);
-             simulatedMatches.push({
-                 id: `${otherSeries.id}-m${otherSeries.matches.length + 1}`,
-                 player1Id: otherSeries.player1Id, player2Id: otherSeries.player2Id, phase: 'SemiFinals', roundNumber: otherSeries.matches.length + 1, isCompleted: true, winnerId: owId
-             });
-        }
+        otherSeries = state.semiFinals.find(s => !currentActiveMatch.id.startsWith(s.id));
     } else if (state.currentPhase === 'Finals') {
-        // If playing Final, simulate 3rd Place (and vice versa)
         const isFinal = currentActiveMatch.id.startsWith('final');
-        const otherSeries = isFinal ? state.thirdPlace : state.final;
-        
-        // Note: state.final or state.thirdPlace might be null during transition or if types are loose, but logic guarantees they exist in Finals phase.
-        if (otherSeries && !otherSeries.winnerId) {
+        otherSeries = isFinal ? state.thirdPlace! : state.final!;
+    }
+    
+    if (otherSeries && !otherSeries.winnerId) {
              const op1 = players.find(p => p.id === otherSeries.player1Id)!;
              const op2 = players.find(p => p.id === otherSeries.player2Id)!;
              const owId = simulateMatchWinner(op1, op2);
              simulatedMatches.push({
                  id: `${otherSeries.id}-m${otherSeries.matches.length + 1}`,
-                 player1Id: otherSeries.player1Id, player2Id: otherSeries.player2Id, phase: state.currentPhase === 'Finals' ? (isFinal ? 'ThirdPlace' : 'Finals') : 'Finals', roundNumber: otherSeries.matches.length + 1, isCompleted: true, winnerId: owId
+                 player1Id: otherSeries.player1Id, player2Id: otherSeries.player2Id, phase: state.currentPhase === 'Finals' ? (currentActiveMatch.id.startsWith('final') ? 'ThirdPlace' : 'Finals') : 'SemiFinals', roundNumber: otherSeries.matches.length + 1, isCompleted: true, winnerId: owId
              });
-        }
     }
 
     // Update Series State with all new matches
-    updateKnockoutState(null, simulatedMatches);
+    updateKnockoutState(completedMatch, simulatedMatches);
   };
 
   const simulateNextKnockoutStep = () => {
     // For spectator mode: Advance all incomplete series by 1 game
     const { semiFinals, final, thirdPlace, players } = state;
     
-    // Determine which series to simulate
-    // Prioritize Semis if active, then Finals
     let seriesToSimulate: KnockoutSeries[] = [];
     if (state.currentPhase === 'SemiFinals') {
         seriesToSimulate = semiFinals.filter(s => !s.winnerId);
@@ -263,9 +272,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (seriesToSimulate.length === 0) return;
 
-    // Simulate 1 game for each active series
     const simulatedMatches: Match[] = [];
-    
     seriesToSimulate.forEach(s => {
          const p1 = players.find(p => p.id === s.player1Id)!;
          const p2 = players.find(p => p.id === s.player2Id)!;
@@ -276,18 +283,24 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
          });
     });
 
-    // Batch update
     updateKnockoutState(null, simulatedMatches);
   };
 
-  const updateKnockoutState = (singleCompletedMatch: Match | null, batchMatches: Match[] = []) => {
+  const updateKnockoutState = (userCompletedMatch: Match | null, batchMatches: Match[] = []) => {
       setState(prev => {
-          let newState = { ...prev, currentActiveMatch: null };
-          const matchesToProcess = singleCompletedMatch ? [singleCompletedMatch] : batchMatches;
+          let nextActiveMatch = null;
+          const matchesToProcess = userCompletedMatch ? [userCompletedMatch] : batchMatches; // Actually we want ALL matches including simulated ones
+          // Wait, batchMatches usually includes userCompletedMatch if called from resolveKnockoutBattle logic I wrote above?
+          // No, I passed `completedMatch` and `simulatedMatches` (which contained completedMatch). 
+          // Let's rely on batchMatches being the full list if provided.
+          
+          const finalMatchesToProcess = batchMatches.length > 0 ? batchMatches : (userCompletedMatch ? [userCompletedMatch] : []);
 
+          let newState = { ...prev };
+          
           // Helper to update a series
           const updateSeries = (series: KnockoutSeries) => {
-              const matchForSeries = matchesToProcess.find(m => m.id.startsWith(series.id));
+              const matchForSeries = finalMatchesToProcess.find(m => m.id.startsWith(series.id));
               if (!matchForSeries) return series;
 
               const newSeries = { ...series };
@@ -298,6 +311,19 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               if (newSeries.player1Wins >= newSeries.targetWins) newSeries.winnerId = series.player1Id;
               if (newSeries.player2Wins >= newSeries.targetWins) newSeries.winnerId = series.player2Id;
               
+              // If this was the user's series and it's NOT finished, prep next match
+              if (userCompletedMatch && matchForSeries.id === userCompletedMatch.id && !newSeries.winnerId) {
+                  const nextMatchId = `${newSeries.id}-m${newSeries.matches.length + 1}`;
+                   nextActiveMatch = {
+                        id: nextMatchId,
+                        player1Id: newSeries.player1Id,
+                        player2Id: newSeries.player2Id,
+                        phase: newState.currentPhase,
+                        roundNumber: newSeries.matches.length + 1,
+                        isCompleted: false
+                   } as Match;
+              }
+
               return newSeries;
           };
 
@@ -307,6 +333,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
               
               // Check transition to Finals
               if (newState.semiFinals.every(s => s.winnerId)) {
+                  // ... (same transition logic) ...
                   const s1 = newState.semiFinals[0];
                   const s2 = newState.semiFinals[1];
                   const s1Winner = s1.winnerId!;
@@ -322,7 +349,11 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   if (userWonSemis) {
                       newState.showCelebration = true;
                       newState.celebrationMessage = 'Incredible! You made it to the Grand Final!';
+                      newState.uiView = 'bracket'; // Force bracket view on transition
+                  } else {
+                      newState.uiView = 'bracket'; // Spectator
                   }
+                  nextActiveMatch = null; // Reset active match on phase change
               }
           } else {
               // Update Finals/3rd Place
@@ -339,15 +370,21 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
                        newState.showCelebration = true;
                        newState.celebrationMessage = `Tournament Over. ${winnerName} is the Champion.`;
                    }
+                   nextActiveMatch = null; // Game over
               }
           }
 
-          return newState;
+          // Update State
+          return {
+              ...newState,
+              currentActiveMatch: nextActiveMatch, // Set next match if series continues
+              lastMatchResult: userCompletedMatch // Set result for UI
+          };
       });
   };
 
   return (
-    <GameContext.Provider value={{ state, selectCharacter, playNextMatch, startKnockoutBattle, simulateNextKnockoutStep, resetGame, closeCelebration }}>
+    <GameContext.Provider value={{ state, selectCharacter, playNextMatch, startKnockoutBattle, simulateNextKnockoutStep, setView, clearLastMatch, resetGame, closeCelebration }}>
       {children}
     </GameContext.Provider>
   );
