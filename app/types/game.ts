@@ -15,6 +15,7 @@ export interface Match {
   winnerId?: string;
   phase: Phase;
   roundNumber: number; // 1-7 for RoundRobin, or series game number for Knockout
+  gameNumber?: number; // 1 or 2 (Round Robin only, to denote 1st/2nd game vs same opponent)
   isCompleted: boolean;
 }
 
@@ -43,8 +44,10 @@ export interface GameState {
   final: KnockoutSeries | null;
   thirdPlace: KnockoutSeries | null;
   
+  // Active Match (for Battle View)
+  currentActiveMatch: Match | null; // If set, show MatchArea
+  
   // UI State
   showCelebration: boolean;
   celebrationMessage: string;
 }
-
