@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../context/GameContext';
 import { Player } from '../types/game';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,8 +9,17 @@ export const MatchArea: React.FC = () => {
   const { state, playNextMatch, setView, clearLastMatch } = useGame();
   const [isFighting, setIsFighting] = useState(false);
   const [showFlash, setShowFlash] = useState(false);
+  const waitingForResult = useRef(false);
   
   const lastResult = state.lastMatchResult;
+
+  // When lastMatchResult is set while we're waiting, stop fighting animation
+  useEffect(() => {
+    if (lastResult && waitingForResult.current) {
+      setIsFighting(false);
+      waitingForResult.current = false;
+    }
+  }, [lastResult]);
   const currentMatch = state.currentActiveMatch;
   
   const activeData = lastResult || currentMatch;
@@ -41,11 +50,12 @@ export const MatchArea: React.FC = () => {
 
   const handleStart = () => {
     setIsFighting(true);
+    waitingForResult.current = true;
     setTimeout(() => {
       setShowFlash(true);
       setTimeout(() => setShowFlash(false), 150);
       playNextMatch();
-      setIsFighting(false);
+      // The useEffect watching lastResult will set isFighting to false
     }, 1800); 
   };
 
@@ -158,48 +168,37 @@ export const MatchArea: React.FC = () => {
 
         {/* VS / Result Badge */}
         <div className="relative z-20 -my-2">
-          <AnimatePresence mode="wait">
-            {isFighting ? (
-              <motion.div 
-                key="fight"
-                initial={{ scale: 0.5, opacity: 0, rotate: -10 }}
-                animate={{ scale: [1, 1.2, 1], opacity: 1, rotate: 0 }}
-                exit={{ scale: 0, opacity: 0 }}
-                transition={{ repeat: Infinity, duration: 0.5 }}
-                className="text-5xl md:text-6xl font-black text-[var(--color-cyber-yellow)] glow-text-yellow glitch"
-              >
-                ⚔️
-              </motion.div>
-            ) : lastResult ? (
-              <motion.div 
-                key="result"
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ type: "spring", stiffness: 200 }}
-                className={`
-                  w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center
-                  ${userWon 
-                    ? 'bg-gradient-to-br from-[var(--color-cyber-green)] to-[var(--color-cyber-cyan)] glow-cyan' 
-                    : 'bg-gradient-to-br from-[var(--color-cyber-red)] to-[var(--color-cyber-pink)] glow-pink'}
-                `}
-              >
-                <span className="text-2xl md:text-3xl font-black text-[var(--color-void)]">
-                  {userWon ? 'WIN' : 'LOSE'}
-                </span>
-              </motion.div>
-            ) : (
-              <motion.div 
-                key="vs"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="relative"
-              >
-                <div className="w-16 h-16 md:w-20 md:h-20 glass-panel rounded-full flex items-center justify-center border-2 border-[var(--color-cyber-cyan)]/30">
-                  <span className="text-xl md:text-2xl font-black text-[var(--color-cyber-cyan)] tracking-widest">VS</span>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
+          {lastResult ? (
+            <motion.div 
+              key="result"
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              className={`
+                w-20 h-20 md:w-24 md:h-24 rounded-full flex items-center justify-center
+                ${userWon 
+                  ? 'bg-gradient-to-br from-[var(--color-cyber-green)] to-[var(--color-cyber-cyan)] glow-cyan' 
+                  : 'bg-gradient-to-br from-[var(--color-cyber-red)] to-[var(--color-cyber-pink)] glow-pink'}
+              `}
+            >
+              <span className="text-2xl md:text-3xl font-black text-[var(--color-void)]">
+                {userWon ? 'WIN' : 'LOSE'}
+              </span>
+            </motion.div>
+          ) : isFighting ? (
+            <motion.div 
+              key="fight"
+              animate={{ scale: [1, 1.2, 1], rotate: [0, 5, -5, 0] }}
+              transition={{ repeat: Infinity, duration: 0.4 }}
+              className="text-5xl md:text-6xl"
+            >
+              ⚔️
+            </motion.div>
+          ) : (
+            <div className="w-16 h-16 md:w-20 md:h-20 glass-panel rounded-full flex items-center justify-center border-2 border-[var(--color-cyber-cyan)]/30">
+              <span className="text-xl md:text-2xl font-black text-[var(--color-cyber-cyan)] tracking-widest">VS</span>
+            </div>
+          )}
         </div>
 
         {/* Player 2 (Bottom) */}

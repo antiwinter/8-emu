@@ -96,10 +96,12 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ player, onSelect, variant
         <div className="absolute inset-0 bg-gradient-to-br from-[var(--color-cyber-cyan)] via-transparent to-[var(--color-cyber-pink)] opacity-0 group-hover:opacity-20 transition-opacity duration-500 pointer-events-none" />
         
         {/* Avatar Container */}
-        <div className="relative aspect-[3/4] overflow-hidden">
+        <div className="relative aspect-square overflow-hidden">
           {/* Decorative Corner Lines */}
-          <div className="absolute top-2 left-2 w-4 h-4 border-t-2 border-l-2 border-[var(--color-cyber-cyan)] opacity-50" />
-          <div className="absolute top-2 right-2 w-4 h-4 border-t-2 border-r-2 border-[var(--color-cyber-cyan)] opacity-50" />
+          <div className="absolute top-1 left-1 w-3 h-3 border-t border-l border-[var(--color-cyber-cyan)] opacity-50 z-10" />
+          <div className="absolute top-1 right-1 w-3 h-3 border-t border-r border-[var(--color-cyber-cyan)] opacity-50 z-10" />
+          <div className="absolute bottom-1 left-1 w-3 h-3 border-b border-l border-[var(--color-cyber-cyan)] opacity-50 z-10" />
+          <div className="absolute bottom-1 right-1 w-3 h-3 border-b border-r border-[var(--color-cyber-cyan)] opacity-50 z-10" />
           
           {/* Avatar Image */}
           <img 
@@ -113,29 +115,13 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ player, onSelect, variant
           
           {/* Gradient Overlay */}
           <div className="absolute inset-0 bg-gradient-to-t from-[var(--color-void)] via-transparent to-transparent" />
-          
-          {/* Scanline Effect */}
-          <div className="absolute inset-0 bg-[repeating-linear-gradient(0deg,rgba(0,0,0,0.1)_0px,rgba(0,0,0,0.1)_1px,transparent_1px,transparent_3px)] opacity-30 pointer-events-none" />
         </div>
         
         {/* Name Plate */}
-        <div className="relative px-3 py-3 bg-[var(--color-void-dark)]/80">
-          {/* Decorative Line */}
-          <div className="absolute top-0 left-3 right-3 h-[1px] bg-gradient-to-r from-transparent via-[var(--color-cyber-cyan)]/50 to-transparent" />
-          
-          <h3 className="text-base md:text-lg font-bold text-white text-center tracking-wide group-hover:text-[var(--color-cyber-cyan)] transition-colors">
+        <div className="relative px-2 py-2 bg-[var(--color-void-dark)]/80">
+          <h3 className="text-sm font-bold text-white text-center tracking-wide group-hover:text-[var(--color-cyber-cyan)] transition-colors">
             {player.name}
           </h3>
-          
-          {/* Fake Stats Bar (Visual Only) */}
-          <div className="mt-2 flex gap-1">
-            {[...Array(5)].map((_, i) => (
-              <div 
-                key={i} 
-                className={`flex-1 h-1 rounded-full ${i < 4 ? 'bg-[var(--color-cyber-cyan)]/60' : 'bg-gray-700'}`}
-              />
-            ))}
-          </div>
         </div>
       </div>
       
