@@ -14,7 +14,37 @@ export const Bracket: React.FC = () => {
   const isUserPlaying = userInSemis || userInFinal || userInThird;
   const isSpectator = !isUserPlaying;
 
-  const handleSpectatorSimulate = () => {
+  // Helper to find the active series for the user
+  const getUserActiveSeriesId = () => {
+      if (state.currentPhase === 'SemiFinals') {
+          return state.semiFinals.find(s => s.player1Id === state.userPlayerId || s.player2Id === state.userPlayerId)?.id;
+      }
+      if (state.currentPhase === 'Finals') {
+          if (userInFinal) return state.final?.id;
+          if (userInThird) return state.thirdPlace?.id;
+      }
+      return null;
+  };
+  
+  const userSeriesId = getUserActiveSeriesId();
+  
+  // Check completion status
+  const allSeries = [...state.semiFinals, state.final, state.thirdPlace].filter(Boolean) as KnockoutSeries[];
+  const userSeries = allSeries.find(s => s.id === userSeriesId);
+  const isUserSeriesFinished = userSeries ? !!userSeries.winnerId : false;
+
+  // Check if ANY other series in the CURRENT PHASE is still active
+  let isOtherSeriesActive = false;
+  if (state.currentPhase === 'SemiFinals') {
+      isOtherSeriesActive = state.semiFinals.some(s => !s.winnerId);
+  } else if (state.currentPhase === 'Finals') {
+      isOtherSeriesActive = (!!state.final && !state.final.winnerId) || (!!state.thirdPlace && !state.thirdPlace.winnerId);
+  }
+
+  // Waiting Mode: User finished, but phase isn't over (others playing)
+  const isWaitingForOpponent = isUserSeriesFinished && isOtherSeriesActive;
+
+  const handleSimulate = () => {
     setIsSimulating(true);
     setTimeout(() => {
       simulateNextKnockoutStep();
@@ -33,24 +63,11 @@ export const Bracket: React.FC = () => {
 
   const getPlayer = (id: string) => state.players.find(p => p.id === id);
 
-  // Helper to find the active series for the user
-  const getUserActiveSeriesId = () => {
-      if (state.currentPhase === 'SemiFinals') {
-          return state.semiFinals.find(s => s.player1Id === state.userPlayerId || s.player2Id === state.userPlayerId)?.id;
-      }
-      if (state.currentPhase === 'Finals') {
-          if (userInFinal) return state.final?.id;
-          if (userInThird) return state.thirdPlace?.id;
-      }
-      return null;
-  };
-  
-  const userSeriesId = getUserActiveSeriesId();
-
   return (
     <div className="flex flex-col items-center w-full max-w-6xl mx-auto p-4">
       <h2 className="text-3xl font-bold text-yellow-500 mb-2">Knockout Phase</h2>
       {isSpectator && <div className="mb-6 px-4 py-2 bg-gray-800 rounded-full text-sm text-gray-400">Spectator Mode</div>}
+      {isWaitingForOpponent && <div className="mb-6 px-4 py-2 bg-blue-900/50 text-blue-200 border border-blue-500/30 rounded-full text-sm animate-pulse">Waiting for other matches...</div>}
 
       <div className="flex justify-between w-full gap-8 relative">
         {/* Semi Finals Column */}
@@ -82,23 +99,26 @@ export const Bracket: React.FC = () => {
 
       <div className="mt-12">
         {/* Action Button Area */}
-        {isSpectator ? (
+        {isSpectator || isWaitingForOpponent ? (
              <button
-                onClick={handleSpectatorSimulate}
-                disabled={isSimulating || (!!final?.winnerId && !!thirdPlace?.winnerId)}
+                onClick={handleSimulate}
+                disabled={isSimulating || (!isOtherSeriesActive && !isWaitingForOpponent && (!!final?.winnerId && !!thirdPlace?.winnerId))}
                 className={`
-                    px-10 py-4 bg-gray-700 text-white font-bold text-xl rounded-full shadow-lg 
-                    transform transition-all active:scale-95 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed
-                    border-4 border-gray-600
+                    px-10 py-4 font-bold text-xl rounded-full shadow-lg 
+                    transform transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed
+                    border-4 
+                    ${isWaitingForOpponent 
+                        ? 'bg-blue-700 text-white border-blue-500 hover:bg-blue-600' 
+                        : 'bg-gray-700 text-white border-gray-600 hover:bg-gray-600'}
                 `}
              >
-                {!!final?.winnerId ? 'Tournament Finished' : (isSimulating ? 'Simulating...' : 'Watch Next Round')}
+                {!!final?.winnerId && !isWaitingForOpponent ? 'Tournament Finished' : (isSimulating ? 'Simulating...' : (isWaitingForOpponent ? 'Watch Other Matches' : 'Watch Next Round'))}
              </button>
         ) : (
              userSeriesId && (
                 <button
                     onClick={() => handleUserBattle(userSeriesId)}
-                    disabled={false} // Should be disabled if waiting for opponent? Logic handled in context usually
+                    disabled={false} 
                     className={`
                         px-12 py-6 bg-gradient-to-r from-red-600 to-red-800 text-white font-bold text-2xl rounded-full shadow-lg 
                         transform transition-all active:scale-95 hover:brightness-110

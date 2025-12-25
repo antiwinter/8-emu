@@ -42,44 +42,10 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  // Helper to find next user match in Round Robin
-  const findNextUserMatch = (
-    startIndex: number, 
-    matches: Match[], 
-    userId: string | null
-  ): { index: number, simulatedMatches: Match[] } => {
-    let index = startIndex;
-    const simulated = [...matches];
-
-    while (index < simulated.length) {
-      const match = simulated[index];
-      const involvesUser = userId && (match.player1Id === userId || match.player2Id === userId);
-
-      if (involvesUser) {
-        // Found user match, stop here
-        return { index, simulatedMatches: simulated };
-      }
-
-      // Simulate cpu match
-      const p1 = state.players.find(p => p.id === match.player1Id)!;
-      const p2 = state.players.find(p => p.id === match.player2Id)!;
-      const winnerId = simulateMatchWinner(p1, p2);
-      
-      simulated[index] = { ...match, winnerId, isCompleted: true };
-      index++;
-    }
-
-    return { index, simulatedMatches: simulated };
-  };
-
   const selectCharacter = (playerId: string) => {
     // When selecting character, we also want to fast-forward to their first match
     setState(prev => {
       const matches = [...prev.roundRobinMatches];
-      // Note: can't use helper easily here because state.players might be stale in closure? 
-      // Actually state.players is constant unless points change, but points only change after matches.
-      // Strengths are constant.
-      // We can use the helper logic here but need to access players.
       
       let index = 0;
       while (index < matches.length) {
@@ -220,6 +186,7 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const startKnockoutBattle = (seriesId: string) => {
     const series = [...state.semiFinals, state.final, state.thirdPlace].find(s => s && s.id === seriesId);
     if (!series) return;
+    if (series.winnerId) return; // Prevent playing if already won/lost
 
     // Create a new match object for this game
     const matchId = `${series.id}-m${series.matches.length + 1}`;
@@ -239,21 +206,50 @@ export const GameProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { currentActiveMatch, players, userPlayerId } = state;
     if (!currentActiveMatch) return;
 
-    // Simulate result
+    // 1. Simulate result of User's active match
     const p1 = players.find(p => p.id === currentActiveMatch.player1Id)!;
     const p2 = players.find(p => p.id === currentActiveMatch.player2Id)!;
     const winnerId = simulateMatchWinner(p1, p2);
     
     const completedMatch = { ...currentActiveMatch, winnerId, isCompleted: true };
+    const simulatedMatches = [completedMatch];
 
-    // Update Series State
-    updateKnockoutState(completedMatch);
+    // 2. Simulate 1 game for OTHER active series in same phase
+    if (state.currentPhase === 'SemiFinals') {
+        const otherSeries = state.semiFinals.find(s => !currentActiveMatch.id.startsWith(s.id));
+        if (otherSeries && !otherSeries.winnerId) {
+             const op1 = players.find(p => p.id === otherSeries.player1Id)!;
+             const op2 = players.find(p => p.id === otherSeries.player2Id)!;
+             const owId = simulateMatchWinner(op1, op2);
+             simulatedMatches.push({
+                 id: `${otherSeries.id}-m${otherSeries.matches.length + 1}`,
+                 player1Id: otherSeries.player1Id, player2Id: otherSeries.player2Id, phase: 'SemiFinals', roundNumber: otherSeries.matches.length + 1, isCompleted: true, winnerId: owId
+             });
+        }
+    } else if (state.currentPhase === 'Finals') {
+        // If playing Final, simulate 3rd Place (and vice versa)
+        const isFinal = currentActiveMatch.id.startsWith('final');
+        const otherSeries = isFinal ? state.thirdPlace : state.final;
+        
+        // Note: state.final or state.thirdPlace might be null during transition or if types are loose, but logic guarantees they exist in Finals phase.
+        if (otherSeries && !otherSeries.winnerId) {
+             const op1 = players.find(p => p.id === otherSeries.player1Id)!;
+             const op2 = players.find(p => p.id === otherSeries.player2Id)!;
+             const owId = simulateMatchWinner(op1, op2);
+             simulatedMatches.push({
+                 id: `${otherSeries.id}-m${otherSeries.matches.length + 1}`,
+                 player1Id: otherSeries.player1Id, player2Id: otherSeries.player2Id, phase: state.currentPhase === 'Finals' ? (isFinal ? 'ThirdPlace' : 'Finals') : 'Finals', roundNumber: otherSeries.matches.length + 1, isCompleted: true, winnerId: owId
+             });
+        }
+    }
+
+    // Update Series State with all new matches
+    updateKnockoutState(null, simulatedMatches);
   };
 
   const simulateNextKnockoutStep = () => {
     // For spectator mode: Advance all incomplete series by 1 game
     const { semiFinals, final, thirdPlace, players } = state;
-    let nextMatch: Match | null = null;
     
     // Determine which series to simulate
     // Prioritize Semis if active, then Finals
