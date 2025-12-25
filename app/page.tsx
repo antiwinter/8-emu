@@ -7,6 +7,7 @@ import { MatchArea } from './components/MatchArea';
 import { Bracket } from './components/Bracket';
 import { Leaderboard } from './components/Leaderboard';
 import { CelebrationModal } from './components/CelebrationModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const GameContainer = () => {
   const { state } = useGame();
@@ -18,31 +19,55 @@ const GameContainer = () => {
   const renderContent = () => {
       switch (state.uiView) {
           case 'match':
-              return <MatchArea />;
+              return <MatchArea key="match" />;
           case 'leaderboard':
-              return <Leaderboard />;
+              return <Leaderboard key="leaderboard" />;
           case 'bracket':
-              return <Bracket />;
+              return <Bracket key="bracket" />;
           default:
-              return <MatchArea />;
+              return <MatchArea key="default" />;
       }
   };
 
+  const getPhaseLabel = () => {
+    switch (state.currentPhase) {
+      case 'RoundRobin': return 'ROUND ROBIN';
+      case 'SemiFinals': return 'SEMI FINALS';
+      case 'Finals': return 'FINALS';
+      default: return state.currentPhase;
+    }
+  };
+
   return (
-    <main className="min-h-screen bg-gray-900 text-white flex flex-col p-4 md:p-8">
-      {/* Header (Visible on all pages except StartScreen) */}
-      <header className="flex justify-between items-center mb-8 pb-4 border-b border-gray-800">
-        <h1 className="text-2xl font-bold text-yellow-500">Tournament Emulator</h1>
-        <div className="flex flex-col items-end text-sm text-gray-400">
-          <div>Phase: <span className="text-white font-bold">{state.currentPhase}</span></div>
-          {state.uiView === 'match' && state.currentPhase === 'RoundRobin' && state.roundRobinMatches.length > 0 && (
-             <div>Progress: {Math.min(state.currentMatchIndex + 1, state.roundRobinMatches.length)} / {state.roundRobinMatches.length}</div>
-          )}
+    <main className="min-h-screen min-h-[100dvh] w-full flex flex-col relative overflow-hidden">
+      
+      {/* Top Nav Bar */}
+      <header className="flex justify-between items-center px-4 py-3 glass-panel z-50 sticky top-0 border-b border-[var(--color-glass-border)]">
+        <h1 className="text-lg font-black text-[var(--color-cyber-cyan)] tracking-widest">
+          ARENA
+        </h1>
+        <div className="flex items-center gap-3">
+          <span className="text-[10px] uppercase tracking-widest text-gray-500">Phase</span>
+          <span className="px-2 py-1 bg-[var(--color-cyber-cyan)]/10 border border-[var(--color-cyber-cyan)]/30 rounded text-xs font-bold text-[var(--color-cyber-cyan)]">
+            {getPhaseLabel()}
+          </span>
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center w-full">
-         {renderContent()}
+      {/* Content Area */}
+      <div className="flex-1 flex flex-col w-full relative">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={state.uiView}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="flex-1 flex flex-col"
+          >
+            {renderContent()}
+          </motion.div>
+        </AnimatePresence>
       </div>
 
       <CelebrationModal />

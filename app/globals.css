@@ -1,26 +1,264 @@
 @import "tailwindcss";
 
+/* ========================================
+   CYBER ARENA THEME
+   ======================================== */
+
+@theme {
+  /* Typography */
+  --font-display: var(--font-orbitron), 'Orbitron', sans-serif;
+  --font-body: var(--font-rajdhani), 'Rajdhani', sans-serif;
+  
+  /* Cyber Color Palette */
+  --color-void: #0B0E14;
+  --color-void-light: #12161F;
+  --color-void-dark: #060810;
+  
+  --color-cyber-cyan: #00F0FF;
+  --color-cyber-cyan-dim: #00B8C4;
+  --color-cyber-pink: #FF0099;
+  --color-cyber-pink-dim: #CC007A;
+  --color-cyber-yellow: #FFD700;
+  --color-cyber-green: #00FF88;
+  --color-cyber-red: #FF3366;
+  
+  --color-glass: rgba(20, 25, 35, 0.85);
+  --color-glass-light: rgba(30, 40, 55, 0.75);
+  --color-glass-border: rgba(0, 240, 255, 0.15);
+  
+  /* Glows */
+  --glow-cyan: 0 0 20px rgba(0, 240, 255, 0.5), 0 0 40px rgba(0, 240, 255, 0.2);
+  --glow-pink: 0 0 20px rgba(255, 0, 153, 0.5), 0 0 40px rgba(255, 0, 153, 0.2);
+  --glow-yellow: 0 0 20px rgba(255, 215, 0, 0.5), 0 0 40px rgba(255, 215, 0, 0.2);
+}
+
+/* ========================================
+   BASE STYLES
+   ======================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg-grid: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg stroke='%2300F0FF' stroke-opacity='0.05' stroke-width='1'%3E%3Cpath d='M30 0L60 17.32v34.64L30 60 0 51.96V17.32z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+* {
+  box-sizing: border-box;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-body);
+  background: 
+    var(--bg-grid),
+    radial-gradient(ellipse at 50% 0%, rgba(0, 240, 255, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 80%, rgba(255, 0, 153, 0.05) 0%, transparent 40%),
+    linear-gradient(180deg, #0B0E14 0%, #0D1118 50%, #0B0E14 100%);
+  background-attachment: fixed;
+  color: #E8F0FF;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ========================================
+   TYPOGRAPHY
+   ======================================== */
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+/* ========================================
+   CUSTOM SCROLLBAR
+   ======================================== */
+
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(0, 240, 255, 0.05);
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, var(--color-cyber-cyan) 0%, var(--color-cyber-pink) 100%);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cyber-cyan);
+}
+
+/* ========================================
+   UTILITY CLASSES
+   ======================================== */
+
+.glass-panel {
+  background: var(--color-glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--color-glass-border);
+}
+
+.glow-cyan {
+  box-shadow: var(--glow-cyan);
+}
+
+.glow-pink {
+  box-shadow: var(--glow-pink);
+}
+
+.glow-text-cyan {
+  text-shadow: 0 0 10px rgba(0, 240, 255, 0.8), 0 0 30px rgba(0, 240, 255, 0.4);
+}
+
+.glow-text-pink {
+  text-shadow: 0 0 10px rgba(255, 0, 153, 0.8), 0 0 30px rgba(255, 0, 153, 0.4);
+}
+
+.glow-text-yellow {
+  text-shadow: 0 0 10px rgba(255, 215, 0, 0.8), 0 0 30px rgba(255, 215, 0, 0.4);
+}
+
+/* Angled Clip Paths */
+.clip-angle-tl {
+  clip-path: polygon(12px 0, 100% 0, 100% 100%, 0 100%, 0 12px);
+}
+
+.clip-angle-tr {
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+}
+
+.clip-angle-bl {
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 12px 100%, 0 calc(100% - 12px));
+}
+
+.clip-angle-br {
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+}
+
+.clip-angle-both {
+  clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+}
+
+/* Cyber Button Base */
+.cyber-btn {
+  position: relative;
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 14px 28px;
+  background: linear-gradient(135deg, var(--color-cyber-cyan) 0%, var(--color-cyber-cyan-dim) 100%);
+  color: var(--color-void);
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+.cyber-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glow-cyan);
+}
+
+.cyber-btn:active {
+  transform: translateY(0);
+}
+
+.cyber-btn-pink {
+  background: linear-gradient(135deg, var(--color-cyber-pink) 0%, var(--color-cyber-pink-dim) 100%);
+}
+
+.cyber-btn-pink:hover {
+  box-shadow: var(--glow-pink);
+}
+
+/* Glitch Animation */
+@keyframes glitch {
+  0% { transform: translate(0); }
+  20% { transform: translate(-2px, 2px); }
+  40% { transform: translate(-2px, -2px); }
+  60% { transform: translate(2px, 2px); }
+  80% { transform: translate(2px, -2px); }
+  100% { transform: translate(0); }
+}
+
+.glitch {
+  animation: glitch 0.3s ease infinite;
+}
+
+/* Scanline Overlay */
+.scanlines::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(0, 0, 0, 0.1) 0px,
+    rgba(0, 0, 0, 0.1) 1px,
+    transparent 1px,
+    transparent 2px
+  );
+  pointer-events: none;
+  z-index: 100;
+}
+
+/* Power Bar */
+.power-bar {
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+.power-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-cyber-cyan) 0%, var(--color-cyber-green) 100%);
+  border-radius: 4px;
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px var(--color-cyber-cyan);
+}
+
+/* Holographic Frame */
+.holo-frame {
+  position: relative;
+  background: linear-gradient(135deg, rgba(0, 240, 255, 0.1) 0%, rgba(255, 0, 153, 0.1) 100%);
+  padding: 3px;
+}
+
+.holo-frame::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, var(--color-cyber-cyan) 0%, var(--color-cyber-pink) 50%, var(--color-cyber-cyan) 100%);
+  opacity: 0.5;
+  z-index: -1;
+  filter: blur(1px);
+}
+
+/* Pulse Animation */
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; box-shadow: var(--glow-cyan); }
+  50% { opacity: 0.8; box-shadow: 0 0 30px rgba(0, 240, 255, 0.8), 0 0 60px rgba(0, 240, 255, 0.4); }
+}
+
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Flash Effect */
+@keyframes flash {
+  0%, 100% { opacity: 0; }
+  50% { opacity: 1; }
+}
+
+.flash-overlay {
+  animation: flash 0.1s ease;
 }
